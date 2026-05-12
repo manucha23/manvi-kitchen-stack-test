@@ -1,0 +1,73 @@
+name: API Tests
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Target environment
+        required: true
+        default: test
+        type: choice
+        options:
+          - test
+          - staging
+          - prod
+      test_mode:
+        description: Test mode to run
+        required: true
+        default: contract
+        type: choice
+        options:
+          - contract
+          - smoke
+          - readonly
+
+jobs:
+  api-tests:
+    name: Playwright API tests
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    env:
+      API_DOCS_URL: ${{ vars.API_DOCS_URL || 'https://api-doc.test.cravnest.in/' }}
+      API_BASE_URL: ${{ secrets.API_BASE_URL }}
+      COGNITO_REGION: ${{ secrets.COGNITO_REGION }}
+      COGNITO_CLIENT_ID: ${{ secrets.COGNITO_CLIENT_ID }}
+      TEST_USERNAME: ${{ secrets.TEST_USERNAME }}
+      TEST_PASSWORD: ${{ secrets.TEST_PASSWORD }}
+      TEST_MODE: ${{ inputs.environment == 'prod' && 'readonly' || inputs.test_mode }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Type check
+        run: npm run typecheck
+
+      - name: Run contract tests
+        if: ${{ inputs.test_mode == 'contract' && inputs.environment != 'prod' }}
+        run: npm run test:contract
+
+      - name: Run smoke tests
+        if: ${{ inputs.test_mode == 'smoke' && inputs.environment != 'prod' }}
+        run: npm run test:smoke
+
+      - name: Run read-only tests
+        if: ${{ inputs.test_mode == 'readonly' || inputs.environment == 'prod' }}
+        run: npm run test:readonly
+
+      - name: Upload reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: api-test-report-${{ inputs.environment }}-${{ inputs.test_mode }}
+          path: |
+            playwright-report
+            test-results
+          if-no-files-found: ignore
