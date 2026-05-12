@@ -46,14 +46,37 @@ function isOpenApiDocument(value: unknown): value is OpenApiDocument {
   return Boolean((candidate.openapi || candidate.swagger) && candidate.paths && typeof candidate.paths === 'object');
 }
 
+function normalizeOpenApiDocument(document: OpenApiDocument, sourceUrl: string): OpenApiDocument {
+  if (env.apiBaseUrl || document.servers?.length || document.host) {
+    return document;
+  }
+
+  return {
+    ...document,
+    servers: [{ url: new URL('/', sourceUrl).origin }],
+  };
+}
+
 async function fetchJson(url: string): Promise<unknown> {
   const context = await request.newContext();
   try {
     const response = await context.get(url, { timeout: 30_000 });
+    const contentType = response.headers()['content-type'] ?? '';
+    const body = await response.text();
+
     if (!response.ok()) {
       throw new Error(`${response.status()} ${response.statusText()}`);
     }
-    return response.json();
+
+    if (!contentType.toLowerCase().includes('json') && body.trimStart().startsWith('<')) {
+      throw new Error(`Expected JSON but received ${contentType || 'unknown content type'}`);
+    }
+
+    try {
+      return JSON.parse(body);
+    } catch (error) {
+      throw new Error(`Invalid JSON from ${url}: ${error instanceof Error ? error.message : String(error)}`);
+    }
   } finally {
     await context.dispose();
   }
@@ -80,7 +103,7 @@ export async function loadOpenApiDocument(docsUrl = env.apiDocsUrl): Promise<Ope
     try {
       const body = await fetchJson(url);
       if (isOpenApiDocument(body)) {
-        return body;
+        return normalizeOpenApiDocument(body, url);
       }
       errors.push(`${url}: response was JSON but not an OpenAPI document`);
     } catch (error) {
@@ -94,7 +117,7 @@ export async function loadOpenApiDocument(docsUrl = env.apiDocsUrl): Promise<Ope
       try {
         const body = await fetchJson(url);
         if (isOpenApiDocument(body)) {
-          return body;
+          return normalizeOpenApiDocument(body, url);
         }
         errors.push(`${url}: response was JSON but not an OpenAPI document`);
       } catch (error) {

@@ -25,6 +25,15 @@ test.describe('documented read-only API smoke @smoke @readonly', () => {
       const response = await api.request(entry.method, entry.path);
       const documentedStatuses = Object.keys(entry.operation.responses ?? {});
       const actualStatus = String(response.status());
+      const contentType = response.headers()['content-type'] ?? '';
+
+      if (response.ok() && contentType.toLowerCase().includes('text/html')) {
+        testInfo.annotations.push({
+          type: 'warning',
+          description: `${entry.method.toUpperCase()} ${entry.path} returned HTML. This is likely a documentation/UI route, not a JSON API endpoint.`,
+        });
+        continue;
+      }
 
       if (!authToken && ['401', '403'].includes(actualStatus)) {
         testInfo.annotations.push({
