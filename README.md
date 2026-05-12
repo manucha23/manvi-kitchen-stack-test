@@ -17,7 +17,7 @@ Write/create/update regression tests should be added only after their endpoint p
 ## Test modes
 
 - `contract`: documentation-only checks against the OpenAPI definition.
-- `smoke`: read-only runtime checks against documented safe `GET` operations.
+- `smoke`: read-only runtime checks against documented safe `GET` operations. Secured operations are skipped when Cognito credentials are not configured; unauthenticated `401`/`403` responses are reported as warnings instead of failing the whole run.
 - `readonly`: production-safe combination tag used by both contract and smoke tests.
 
 ## Required and optional environment variables

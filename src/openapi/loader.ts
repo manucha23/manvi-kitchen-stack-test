@@ -20,6 +20,9 @@ function candidateSpecUrls(docsUrl: string): string[] {
     resolveUrl(base, 'swagger.json'),
     resolveUrl(base, 'api-docs'),
     resolveUrl(base, 'api-docs.json'),
+    resolveUrl(base, 'api-json'),
+    resolveUrl(base, 'docs-json'),
+    resolveUrl(base, 'swagger-json'),
     resolveUrl(base, 'v3/api-docs'),
     resolveUrl(base, 'swagger/v1/swagger.json'),
   ]);
@@ -134,10 +137,23 @@ export function resolveBaseUrl(document: OpenApiDocument): string {
 }
 
 export function hasRequiredPathOrQueryParameters(entry: OperationEntry, document: OpenApiDocument): boolean {
+  if (entry.path.includes('{') || entry.path.includes('}')) {
+    return true;
+  }
+
   const pathParameters = (document.paths?.[entry.path]?.parameters ?? []) as unknown[];
   const operationParameters = entry.operation.parameters ?? [];
   return [...pathParameters, ...operationParameters].some((parameter) => {
     const candidate = parameter as { in?: string; required?: boolean };
     return candidate.required && (candidate.in === 'path' || candidate.in === 'query');
   });
+}
+
+export function isSecuredOperation(entry: OperationEntry, document: OpenApiDocument): boolean {
+  const operationSecurity = entry.operation.security;
+  if (Array.isArray(operationSecurity)) {
+    return operationSecurity.length > 0;
+  }
+
+  return Array.isArray(document.security) && document.security.length > 0;
 }
