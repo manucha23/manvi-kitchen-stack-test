@@ -1,0 +1,25 @@
+{
+  "name": "manvi-kitchen-api-tests",
+  "version": "0.1.0",
+  "private": true,
+  "description": "OpenAPI-driven external black-box API checks for Manvi Kitchen.",
+  "scripts": {
+    "test": "playwright test",
+    "test:contract": "playwright test --grep @contract",
+    "test:smoke": "playwright test --grep @smoke",
+    "test:readonly": "playwright test --grep @readonly",
+    "test:prod": "TEST_MODE=readonly playwright test --grep @readonly",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "api-testing",
+    "openapi",
+    "playwright",
+    "manvi-kitchen"
+  ],
+  "devDependencies": {
+    "@playwright/test": "^1.52.0",
+    "@types/node": "^22.15.17",
+    "typescript": "^5.8.3"
+  }
+}
